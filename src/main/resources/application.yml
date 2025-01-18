@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:mysql://47.243.31.214:3306/GroupBooking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: 871870
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: app.xmum.xplorer.backend.groupbooking.pojo
