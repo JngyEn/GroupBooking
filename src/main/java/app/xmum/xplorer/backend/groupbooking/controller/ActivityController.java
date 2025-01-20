@@ -16,6 +16,7 @@ public class ActivityController {
 
     @GetMapping("/{id}")
     public ActivityPO findById(@PathVariable Long id) {
+        //hack: 判断时间先后顺序
         return activityService.findById(id);
     }
 

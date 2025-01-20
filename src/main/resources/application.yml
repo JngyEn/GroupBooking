@@ -4,7 +4,23 @@ spring:
     username: root
     password: 871870
     driver-class-name: com.mysql.cj.jdbc.Driver
-
+  data:
+    redis:
+      host: 47.243.31.214
+      port: 6379       # Redis 端口
+      password:        # Redis 密码（如果没有密码，可以省略）
+      database: 0      # 使用的数据库索引（默认是 0）
+      timeout: 2000    # 连接超时时间（毫秒）
+      lettuce:
+        pool:
+          max-active: 8      # 连接池最大连接数
+          max-idle: 8        # 连接池最大空闲连接数
+          min-idle: 0        # 连接池最小空闲连接数
+          max-wait: -1ms     # 连接池最大阻塞等待时间（-1 表示无限制）
+  config:
+    import:
+#      - file:/www/code/ossKey.yml
+    - file:/Users/jngyen/Documents/Code/Jngyen/GroupBooking/src/main/resources/ossKey.yml
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: app.xmum.xplorer.backend.groupbooking.pojo

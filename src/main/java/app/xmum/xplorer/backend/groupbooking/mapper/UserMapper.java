@@ -8,23 +8,25 @@ import java.util.List;
 @Mapper
 public interface UserMapper {
 
-    @Insert("INSERT INTO dim_user (user_uuid, student_id, user_contact_info, student_name, user_avatar_url, created_at, updated_at) " +
-            "VALUES (#{userUuid}, #{studentId}, #{userContactInfo}, #{studentName}, #{userAvatarUrl}, #{createdAt}, #{updatedAt})")
+    // 插入用户
+    @Insert("INSERT INTO dim_user (user_uuid, student_id, student_name, user_avatar_url, created_at, updated_at) " +
+            "VALUES (#{userUuid}, #{studentId}, #{studentName}, #{userAvatarUrl}, #{createdAt}, #{updatedAt})")
     @Options(useGeneratedKeys = true, keyProperty = "userId")
-    void insert(UserPO user);
+    int insertUser(UserPO user);
 
-    @Select("SELECT * FROM dim_user WHERE user_id = #{userId}")
-    UserPO findById(Long userId);
-
+    // 根据 userUuid 查询用户
     @Select("SELECT * FROM dim_user WHERE user_uuid = #{userUuid}")
-    UserPO findByUserUuid(String userUuid);
+    UserPO selectUserByUuid(String userUuid);
 
-    @Select("SELECT * FROM dim_user WHERE student_id = #{studentId}")
-    UserPO findByStudentId(String studentId);
+    // 查询所有用户
+    @Select("SELECT * FROM dim_user")
+    List<UserPO> selectAllUsers();
 
-    @Update("UPDATE dim_user SET user_contact_info = #{userContactInfo}, student_name = #{studentName}, user_avatar_url = #{userAvatarUrl}, updated_at = #{updatedAt} WHERE user_id = #{userId}")
-    void update(UserPO user);
+    // 更新用户信息
+    @Update("UPDATE dim_user SET student_name = #{studentName}, user_avatar_url = #{userAvatarUrl}, updated_at = #{updatedAt} WHERE user_uuid = #{userUuid}")
+    int updateUser(UserPO user);
 
-    @Delete("DELETE FROM dim_user WHERE user_id = #{userId}")
-    void delete(Long userId);
+    // 根据 userUuid 删除用户
+    @Delete("DELETE FROM dim_user WHERE user_uuid = #{userUuid}")
+    int deleteUserByUuid(String userUuid);
 }
