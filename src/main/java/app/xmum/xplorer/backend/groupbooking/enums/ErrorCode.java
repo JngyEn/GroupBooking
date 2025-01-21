@@ -1,4 +1,4 @@
-package app.xmum.xplorer.backend.groupbooking.utils;
+package app.xmum.xplorer.backend.groupbooking.enums;
 
 import lombok.Getter;
 

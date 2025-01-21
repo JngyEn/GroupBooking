@@ -1,7 +1,7 @@
 package app.xmum.xplorer.backend.groupbooking.controller;
 
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
-import app.xmum.xplorer.backend.groupbooking.utils.ErrorCode;
+import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
 import app.xmum.xplorer.backend.groupbooking.utils.OSSUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -1,6 +1,6 @@
 package app.xmum.xplorer.backend.groupbooking.response;
 
-import app.xmum.xplorer.backend.groupbooking.utils.ErrorCode;
+import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
 import lombok.Data;
 
 @Data

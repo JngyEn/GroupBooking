@@ -22,7 +22,8 @@ public class ActivityPO {
     private Integer activityPersonNow; // 活动当前报名人数
     private Long activityVisitNum; // 活动访问次数
     private Integer activityCollectNum; // 活动收藏人数
-    private Integer activityHeat; // 活动热度
+    private Integer commentCount;
+    private double activityHeat; // 活动热度
     private String categoryUuid; // 活动分类 UUID
     private String userUuid; // 活动发起人 UUID
     private LocalDateTime createdAt; // 创建时间
