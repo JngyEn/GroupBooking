@@ -7,6 +7,7 @@ import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
 import app.xmum.xplorer.backend.groupbooking.utils.RedisUtil;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -168,6 +169,28 @@ public class ActivityService {
                     activityPO.setActivityStatus(ActivityStatusEnum.REGISTRATION_ENDED_ONGOING);
                 }
             }
+        }
+    }
+
+    @XxlJob("activityDailyUpdate")
+    public void dailyUpdatesHandler() throws Exception {
+        log.info("开始执行活动状态更新任务,时间:{}", LocalDateTime.now());
+
+        try {
+            // 查询所有活动
+            List<ActivityPO> activityPOList = activityMapper.findAll();
+
+            // 遍历活动列表，更新状态和热度
+            for (ActivityPO activityPO : activityPOList) {
+                updateStatusByTime(activityPO); // 更新状态
+                activityPO.setActivityHeat(heatCalculate(activityPO)); // 计算热度
+                activityMapper.update(activityPO); // 更新数据库
+            }
+
+            log.info("活动状态更新任务执行完成,时间:{}", LocalDateTime.now());
+        } catch (Exception e) {
+            log.error("活动状态更新任务执行失败", e);
+            throw e; // 抛出异常，让 XXL-JOB 捕获并记录失败
         }
     }
 }

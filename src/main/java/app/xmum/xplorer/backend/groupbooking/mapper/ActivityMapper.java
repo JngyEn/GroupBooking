@@ -47,4 +47,6 @@ public interface ActivityMapper {
     // 更新评论数量
     @Update("UPDATE dim_activity SET comment_count = #{commentCount} WHERE activity_id = #{activityId}")
     void updateCommentCount(@Param("activityId") Long activityId, @Param("commentCount") Integer commentCount);
+
+
 }
