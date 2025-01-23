@@ -6,4 +6,8 @@ public class RedisConstant {
     public static final long ACTIVITY_CREATED_TTL = 10*60*1000;
     public static final String ACTIVITY_STATUS_ACTIVATE = "activate";
 
+    // 浏览量
+    public static final String ACTIVITY_VISIT_KEY = "Activity:Visit:";
+
+
 }

@@ -5,6 +5,8 @@ import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
 import app.xmum.xplorer.backend.groupbooking.service.ActivityService;
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
+import app.xmum.xplorer.backend.groupbooking.service.UserService;
+import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,11 +20,18 @@ public class ActivityController {
 
     @Autowired
     private ActivityService activityService;
+    @Autowired
+    private UserService userService;
 
-    @GetMapping("/{Aid}")
-    public ActivityPO findByAId(@PathVariable String Aid) {
-        //hack: 判断时间先后顺序
-        return activityService.findByAId(Aid);
+    @PostMapping("/{uid}")
+    public ApiResponse<?> findByAId(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
+        if(userService.getUserByUuid(uid).getCode() != 200) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"用户不存在");
+        }
+        if(activityService.findByAid(activityPO.getActivityUuid()).getCode() != 200) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
+        }
+        return activityService.findByAId(activityPO, uid);
     }
 
     @PostMapping

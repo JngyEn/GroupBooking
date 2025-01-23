@@ -2,6 +2,7 @@ package app.xmum.xplorer.backend.groupbooking.service;
 
 import app.xmum.xplorer.backend.groupbooking.config.RedisConstant;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
+import app.xmum.xplorer.backend.groupbooking.exception.ActivityException;
 import app.xmum.xplorer.backend.groupbooking.mapper.ActivityMapper;
 import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
@@ -11,6 +12,8 @@ import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -26,9 +29,28 @@ public class ActivityService {
     private ActivityMapper activityMapper;
     @Autowired
     private RedisUtil redisUtil;
+    @Autowired
+    private VisitLogService visitLogService;
 
-    public ActivityPO findByAId(String Aid) {
-        return activityMapper.findByUid(Aid);
+
+    public ApiResponse<ActivityPO> findByAId(ActivityPO activityPO,String  uid) {
+        try {
+            if (redisUtil.hasKey(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid())) {
+                redisUtil.increase(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid());
+            } else {
+                redisUtil.set(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid(), "0");
+            }
+        } catch (Exception e) {
+            log.error("redis访问失败", e);
+        }
+        try {
+            visitLogService.createVisitLog(activityPO, uid);
+        } catch (Exception e) {
+           return ApiResponse.fail(ErrorCode.BAD_REQUEST, "浏览记录插入失败");
+        }
+
+        return ApiResponse.success(activityMapper.findByUid(activityPO.getActivityUuid()));
+
     }
 
     public ApiResponse<?> insert(ActivityPO activityPO) {
@@ -77,6 +99,7 @@ public class ActivityService {
         activityPO.setActivityStatus(ActivityStatusEnum.CANCELLED);
         activityMapper.update(activityPO);
         redisUtil.delete(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityName());
+        log.info("用户:{} 取消活动:{}", userUuid, activityPO.getActivityName());
         return ApiResponse.success(null);
     }
 
@@ -98,7 +121,7 @@ public class ActivityService {
         double timeFunc = 60 - 50 * Math.exp(-0.02 * Math.abs(progress - 60));
 
         double argue = activityPO.getActivityPersonNow() +
-                2*activityPO.getActivityCollectNum() +
+                2L *activityPO.getActivityCollectNum() +
                 activityPO.getActivityVisitNum() +
                 activityPO.getCommentCount();
         double userFunc = Math.log(1 + argue) / Math.log(1.2);
@@ -107,12 +130,12 @@ public class ActivityService {
 
     public void updateStatusByTime(ActivityPO activityPO){
         LocalDateTime now = LocalDateTime.now();
-        Boolean isInteraction = activityPO.getActivityRegisterEndTime().isAfter(activityPO.getActivityBeginTime());
-        Boolean isBeforeRegisterBegin = activityPO.getActivityRegisterStartTime().isAfter(now);
-        Boolean isBeforeActivityBegin = activityPO.getActivityBeginTime().isAfter(now);
-        Boolean isBeforeRegisterEnd = activityPO.getActivityRegisterEndTime().isAfter(now);
-        Boolean isBeforeActivityEnd = activityPO.getActivityEndTime().isAfter(now);
-        Boolean isEnoughRegister = activityPO.getActivityPersonNow().equals(activityPO.getActivityPersonMax());
+        boolean isInteraction = activityPO.getActivityRegisterEndTime().isAfter(activityPO.getActivityBeginTime());
+        boolean isBeforeRegisterBegin = activityPO.getActivityRegisterStartTime().isAfter(now);
+        boolean isBeforeActivityBegin = activityPO.getActivityBeginTime().isAfter(now);
+        boolean isBeforeRegisterEnd = activityPO.getActivityRegisterEndTime().isAfter(now);
+        boolean isBeforeActivityEnd = activityPO.getActivityEndTime().isAfter(now);
+        boolean isEnoughRegister = activityPO.getActivityPersonNow().equals(activityPO.getActivityPersonMax());
 
         if (!isBeforeActivityEnd){
             activityPO.setActivityStatus(ActivityStatusEnum.ENDED);
@@ -172,22 +195,35 @@ public class ActivityService {
         }
     }
 
+
+
     @XxlJob("activityDailyUpdate")
+    @Transactional
     public void dailyUpdatesHandler() throws Exception {
         log.info("开始执行活动状态更新任务,时间:{}", LocalDateTime.now());
 
         try {
             // 查询所有活动
             List<ActivityPO> activityPOList = activityMapper.findAll();
-
             // 遍历活动列表，更新状态和热度
             for (ActivityPO activityPO : activityPOList) {
                 updateStatusByTime(activityPO); // 更新状态
+                visitLogService.countByActivityUuid(activityPO.getActivityUuid()); // 更新访问量
+                long visitNumCached = Long.parseLong(redisUtil.get(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid()));
+                int visitNum = visitLogService.countByActivityUuid(activityPO.getActivityUuid());
+                if(visitNum > visitNumCached){
+                    log.warn("活动:{} 访问量异常，数据库访问量：{}，缓存访问量：{}",activityPO.getActivityName(),visitNum,visitNumCached);
+                    redisUtil.set(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid(), String.valueOf(visitNum));
+                }
+                activityPO.setActivityVisitNum((long) visitNum);
                 activityPO.setActivityHeat(heatCalculate(activityPO)); // 计算热度
                 activityMapper.update(activityPO); // 更新数据库
             }
 
             log.info("活动状态更新任务执行完成,时间:{}", LocalDateTime.now());
+        } catch (NumberFormatException error) {
+            log.error("活动状态更新任务时，redis 记录数据格式错误", error);
+            throw new ActivityException(error.getMessage()); // 抛出异常，让 XXL-JOB 捕获并记录失败
         } catch (Exception e) {
             log.error("活动状态更新任务执行失败", e);
             throw e; // 抛出异常，让 XXL-JOB 捕获并记录失败

@@ -30,4 +30,7 @@ public interface UserVisitLogMapper {
 
     @Delete("DELETE FROM fact_user_visit_log WHERE visit_log_id = #{visitLogId}")
     void delete(Long visitLogId);
+
+    @Select("SELECT COUNT_(*) FROM fact_user_visit_log WHERE activity_uuid = #{activityUuid}")
+    int countByActivityUuid(String activityUuid);
 }

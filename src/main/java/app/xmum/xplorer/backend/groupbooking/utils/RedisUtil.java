@@ -43,4 +43,10 @@ public  class RedisUtil {
     public boolean hasKey(String key) {
         return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
     }
+    public Long increase(String key) {
+        return stringRedisTemplate.opsForValue().increment(key);
+    }
+    public Long increase(String key, long delta) {
+        return stringRedisTemplate.opsForValue().increment(key, delta);
+    }
 }
