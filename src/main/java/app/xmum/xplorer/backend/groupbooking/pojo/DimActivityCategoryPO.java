@@ -1,5 +1,8 @@
 package app.xmum.xplorer.backend.groupbooking.pojo;
+import lombok.Data;
+
 import java.time.LocalDateTime;
+@Data
 public class DimActivityCategoryPO {
     private Long categoryId;          // 活动种类的自增主键
     private String categoryUuid;      // 活动种类UUID

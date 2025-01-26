@@ -49,6 +49,29 @@ public class ActivityController {
         return activityService.insert(activityPO);
     }
 
+    // 参加活动
+    @PostMapping("/{uid}/join")
+    public ApiResponse<?> joinActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
+        ActivityPO activity = activityService.findByAid(activityPO.getActivityUuid()).getData();
+        if(activity == null) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
+        }
+        if(userService.getUserByUuid(uid).getCode() != 200) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        return activityService.joinActivity(activity, uid);
+    }
+    @PostMapping("/{uid}/cancelJoin")
+    public ApiResponse<?> cancelJoinActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
+        ActivityPO activity = activityService.findByAid(activityPO.getActivityUuid()).getData();
+        if(activity == null) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
+        }
+        if(userService.getUserByUuid(uid).getCode() != 200) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        return activityService.cancelJoinActivity(activity, uid);
+    }
     @PutMapping
     public void update(@RequestBody ActivityPO activityPO) {
         activityService.update(activityPO);
@@ -64,7 +87,7 @@ public class ActivityController {
         return activityService.findAll();
     }
 
-    @PostMapping("/{uid}/cancel")
+    @PostMapping("/{uid}/cancelActivity")
     public ApiResponse<?> cancelActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
         if(activityService.findByAid(activityPO.getActivityUuid()).getCode() == 400) {
             return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
@@ -78,9 +101,47 @@ public class ActivityController {
         return activityService.cancelActivity(activityPO, uid);
     }
 
+
+    @GetMapping("/order-by-heat")
+    public ApiResponse<List<ActivityPO>> getActivitiesOrderByHeat() {
+        List<ActivityPO> activities = activityService.getActivitiesOrderByHeat();
+        if (activities.isEmpty()) {
+            return  ApiResponse.fail(ErrorCode.BAD_REQUEST,"没有符合条件的活动");
+        }
+        return ApiResponse.success(activities);
+    }
+
+    // 按照收藏数排序查询活动，排除已结束和已取消的活动
+    @GetMapping("/order-by-collect")
+    public ApiResponse<List<ActivityPO>> getActivitiesOrderByCollect() {
+        List<ActivityPO> activities = activityService.getActivitiesOrderByCollect();
+        if (activities.isEmpty()) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"没有符合条件的活动");
+        }
+        return ApiResponse.success(activities);
+    }
+
+    // 按照活动开始时间排序查询活动，排除已结束和已取消的活动
+    @GetMapping("/order-by-begin-time")
+    public ApiResponse<List<ActivityPO>> getActivitiesOrderByBeginTime() {
+        List<ActivityPO> activities = activityService.getActivitiesOrderByBeginTime();
+        if (activities.isEmpty()) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"没有符合条件的活动");
+        }
+        return ApiResponse.success(activities);
+    }
+
+    // 按照报名截止时间排序查询活动，排除已结束和已取消的活动
+    @GetMapping("/order-by-register-end-time")
+    public ApiResponse<List<ActivityPO>> getActivitiesOrderByRegisterEndTime() {
+        List<ActivityPO> activities = activityService.getActivitiesOrderByRegisterEndTime();
+        if (activities.isEmpty()) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"没有符合条件的活动");
+        }
+        return ApiResponse.success(activities);
+    }
     // TODO: 参与活动
     // TODO：更新热度、限制人数
-
     //Todo：收藏与取消收藏
     //TODO：浏览量
 }

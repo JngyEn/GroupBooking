@@ -5,6 +5,7 @@ import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
 import app.xmum.xplorer.backend.groupbooking.exception.ActivityException;
 import app.xmum.xplorer.backend.groupbooking.mapper.ActivityMapper;
 import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.HotActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
 import app.xmum.xplorer.backend.groupbooking.utils.RedisUtil;
@@ -16,8 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -27,6 +30,8 @@ public class ActivityService {
 
     @Autowired
     private ActivityMapper activityMapper;
+    @Autowired
+    private HotActivityService hotActivityService;
     @Autowired
     private RedisUtil redisUtil;
     @Autowired
@@ -75,8 +80,49 @@ public class ActivityService {
         return ApiResponse.success(activityPO);
     }
 
+    //参加活动
+    public ApiResponse<?> joinActivity(ActivityPO activityPO, String uid) {
+        if (activityPO.getActivityPersonNow() > activityPO.getActivityPersonMax()) {
+            log.error("活动人数超过最大限制");
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动人数已满");
+        }
+        try {
+            activityMapper.joinActivity(activityPO.getActivityUuid());
+        } catch (Exception e) {
+            log.error("参加活动时，人数更新失败", e);
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "参加活动时，活动人数更新失败："+e.getMessage());
+        }
+        updateHeatAndStatus(activityPO);
+
+        return ApiResponse.success(null);
+    }
+    // 取消参加活动
+    public ApiResponse<?> cancelJoinActivity(ActivityPO activityPO, String uid) {
+        if (activityPO.getActivityPersonNow() < 0) {
+            log.error("活动人数小于0");
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动人数小于0");
+        }
+        try {
+            activityMapper.cancelJoinActivity(activityPO.getActivityUuid());
+        } catch (Exception e) {
+            log.error("取消参加活动时，人数更新失败", e);
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "取消参加活动时，活动人数更新失败："+e.getMessage());
+        }
+        updateHeatAndStatus(activityPO);
+
+        return ApiResponse.success(null);
+    }
+
     public void update(ActivityPO activityPO) {
         activityMapper.update(activityPO);
+    }
+    // 用于主动更新活动状态和热度，有activityAttendanceService 进行状态判断并调用
+    public void updateHeatAndStatus(ActivityPO activity) {
+        ActivityPO activityPO = activityMapper.findByUid(activity.getActivityUuid());
+        updateStatusByTime(activityPO);
+        activityPO.setActivityHeat(heatCalculate(activityPO));
+        activityMapper.update(activityPO);
+        hotActivityService.updateHotActivityByActivityId(activityPO.getActivityUuid(), activityPO.getActivityHeat());
     }
 
     public void deleteById(Long id) {
@@ -85,6 +131,10 @@ public class ActivityService {
 
     public List<ActivityPO> findAll() {
         return activityMapper.findAll();
+    }
+
+    public List<ActivityPO> findAllActive() {
+        return activityMapper.findAllActive();
     }
 
     public ApiResponse<ActivityPO> findByAid(String uuid) {
@@ -103,6 +153,26 @@ public class ActivityService {
         return ApiResponse.success(null);
     }
 
+    // 按照热度排序查询活动
+    public List<ActivityPO> getActivitiesOrderByHeat() {
+        return activityMapper.findAllOrderByHeat();
+    }
+
+    // 按照收藏数排序查询活动
+    public List<ActivityPO> getActivitiesOrderByCollect() {
+        return activityMapper.findAllOrderByCollect();
+    }
+
+    // 按照活动开始时间排序查询活动
+    public List<ActivityPO> getActivitiesOrderByBeginTime() {
+        return activityMapper.findAllOrderByBeginTime();
+    }
+
+    // 按照报名截止时间排序查询活动
+    public List<ActivityPO> getActivitiesOrderByRegisterEndTime() {
+        return activityMapper.findAllOrderByRegisterEndTime();
+    }
+
     public double heatCalculate(ActivityPO activityPO) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime beginTime = activityPO.getActivityBeginTime();
@@ -119,14 +189,22 @@ public class ActivityService {
             progress = 100;
         }
         double timeFunc = 60 - 50 * Math.exp(-0.02 * Math.abs(progress - 60));
-
         double argue = activityPO.getActivityPersonNow() +
                 2L *activityPO.getActivityCollectNum() +
                 activityPO.getActivityVisitNum() +
                 activityPO.getCommentCount();
         double userFunc = Math.log(1 + argue) / Math.log(1.2);
-        return timeFunc + userFunc;
+        // 获取当前时间的时分秒毫秒
+        int hour = now.getHour();
+        int minute = now.getMinute();
+        int second = now.getSecond();
+        int millis = now.getNano() / 1_000_000; // 纳秒转毫秒
+
+        // 将时分秒毫秒转换为一个 9 位数（HHmmssSSS）
+        double timeValue = hour * 10_000_000L + minute * 100_000L + second * 1_000L + millis;
+        return timeFunc + userFunc + timeValue*0.000000001;
     }
+
 
     public void updateStatusByTime(ActivityPO activityPO){
         LocalDateTime now = LocalDateTime.now();
@@ -160,11 +238,11 @@ public class ActivityService {
         }
         // 先判断人数是否已满
         if (isEnoughRegister) {
-           if(isBeforeActivityBegin){
-               activityPO.setActivityStatus(ActivityStatusEnum.FULL_NOT_STARTED);
-           } else {
-               activityPO.setActivityStatus(ActivityStatusEnum.FULL_ONGOING);
-           }
+            if(isBeforeActivityBegin){
+                activityPO.setActivityStatus(ActivityStatusEnum.FULL_NOT_STARTED);
+            } else {
+                activityPO.setActivityStatus(ActivityStatusEnum.FULL_ONGOING);
+            }
         } else {
             // 人数未满，判断时间
             if(isBeforeRegisterBegin){
@@ -194,39 +272,38 @@ public class ActivityService {
             }
         }
     }
-
-
-
-    @XxlJob("activityDailyUpdate")
+    /**
+     * 事务 1：更新活动状态、访问量、热度
+     * @return 更新后的活动列表
+     */
     @Transactional
-    public void dailyUpdatesHandler() throws Exception {
-        log.info("开始执行活动状态更新任务,时间:{}", LocalDateTime.now());
+    public List<ActivityPO> updateActivitiesStatusAndHeat() {
+        log.info("开始执行活动状态、访问量、热度更新任务, 时间: {}", LocalDateTime.now());
 
-        try {
-            // 查询所有活动
-            List<ActivityPO> activityPOList = activityMapper.findAll();
-            // 遍历活动列表，更新状态和热度
-            for (ActivityPO activityPO : activityPOList) {
-                updateStatusByTime(activityPO); // 更新状态
-                visitLogService.countByActivityUuid(activityPO.getActivityUuid()); // 更新访问量
-                long visitNumCached = Long.parseLong(redisUtil.get(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid()));
-                int visitNum = visitLogService.countByActivityUuid(activityPO.getActivityUuid());
-                if(visitNum > visitNumCached){
-                    log.warn("活动:{} 访问量异常，数据库访问量：{}，缓存访问量：{}",activityPO.getActivityName(),visitNum,visitNumCached);
-                    redisUtil.set(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid(), String.valueOf(visitNum));
-                }
-                activityPO.setActivityVisitNum((long) visitNum);
-                activityPO.setActivityHeat(heatCalculate(activityPO)); // 计算热度
-                activityMapper.update(activityPO); // 更新数据库
+        // 查询所有活动
+        List<ActivityPO> activityPOList = findAllActive();
+
+        // 遍历活动列表，更新状态和热度
+        for (ActivityPO activityPO : activityPOList) {
+            updateStatusByTime(activityPO); // 更新状态
+            int visitNum = visitLogService.countByActivityUuid(activityPO.getActivityUuid()); // 更新访问量
+
+            // 检查缓存中的访问量是否与数据库一致
+            long visitNumCached = Long.parseLong(redisUtil.get(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid()));
+            if (visitNum > visitNumCached) {
+                log.warn("活动: {} 访问量异常，数据库访问量：{}，缓存访问量：{}", activityPO.getActivityName(), visitNum, visitNumCached);
+                redisUtil.set(RedisConstant.ACTIVITY_VISIT_KEY + activityPO.getActivityUuid(), String.valueOf(visitNum));
             }
 
-            log.info("活动状态更新任务执行完成,时间:{}", LocalDateTime.now());
-        } catch (NumberFormatException error) {
-            log.error("活动状态更新任务时，redis 记录数据格式错误", error);
-            throw new ActivityException(error.getMessage()); // 抛出异常，让 XXL-JOB 捕获并记录失败
-        } catch (Exception e) {
-            log.error("活动状态更新任务执行失败", e);
-            throw e; // 抛出异常，让 XXL-JOB 捕获并记录失败
+            activityPO.setActivityVisitNum((long) visitNum);
+            activityPO.setActivityHeat(heatCalculate(activityPO)); // 计算热度
+            activityMapper.update(activityPO); // 更新数据库
         }
+
+        log.info("活动状态、访问量、热度更新任务执行完成, 时间: {}", LocalDateTime.now());
+
+        // 返回更新后的活动列表
+        return activityPOList;
     }
+
 }

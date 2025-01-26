@@ -9,5 +9,8 @@ public class RedisConstant {
     // 浏览量
     public static final String ACTIVITY_VISIT_KEY = "Activity:Visit:";
 
-
+    // 热度表
+    public static final String HOT_ACTIVITY_LIST_KEY = "HotActivityList:";//+versionId
+    public static final String HOT_ACTIVITY_LIST_CURRENT_VERSION_KEY = "HotActivityList:CurrentVersion";
+    public static final String HOT_ACTIVITY_LIST_VALUE = "HotActivityList:ActivityUuid:";
 }

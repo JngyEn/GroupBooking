@@ -24,6 +24,13 @@ public interface ActivityMapper {
     @Options(useGeneratedKeys = true, keyProperty = "activityId")
     void insert(ActivityPO activityPO);
 
+    // 参加活动
+    @Update("UPDATE dim_activity SET activity_person_now = activity_person_now + 1 WHERE activity_uuid = #{activityUuid} AND activity_person_now < activity_person_max")
+    void joinActivity(@Param("activityUuid") String activityUuid);
+
+    // 退出活动
+    @Update("UPDATE dim_activity SET activity_person_now = activity_person_now - 1 WHERE activity_uuid = #{activityUuid} AND activity_person_now > 0")
+    void cancelJoinActivity(@Param("activityUuid") String activityUuid);
     // 更新活动信息
     @Update("UPDATE dim_activity SET activity_name = #{activityName}, activity_desc_text = #{activityDescText}, " +
             "activity_location = #{activityLocation}, activity_begin_time = #{activityBeginTime}, " +
@@ -43,10 +50,25 @@ public interface ActivityMapper {
     // 查询所有活动
     @Select("SELECT * FROM dim_activity")
     List<ActivityPO> findAll();
-
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8)")
+    List<ActivityPO> findAllActive();
     // 更新评论数量
     @Update("UPDATE dim_activity SET comment_count = #{commentCount} WHERE activity_id = #{activityId}")
     void updateCommentCount(@Param("activityId") Long activityId, @Param("commentCount") Integer commentCount);
 
+    // 按照热度排序查询活动，排除已结束和已取消的活动
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_heat DESC")
+    List<ActivityPO> findAllOrderByHeat();
 
+    // 按照收藏数排序查询活动，排除已结束和已取消的活动
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_collect_num DESC")
+    List<ActivityPO> findAllOrderByCollect();
+
+    // 按照活动开始时间排序查询活动，排除已结束和已取消的活动
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_begin_time ASC")
+    List<ActivityPO> findAllOrderByBeginTime();
+
+    // 按照报名截止时间排序查询活动，排除已结束和已取消的活动
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_register_end_time ASC")
+    List<ActivityPO> findAllOrderByRegisterEndTime();
 }
