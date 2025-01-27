@@ -31,6 +31,15 @@ public interface ActivityMapper {
     // 退出活动
     @Update("UPDATE dim_activity SET activity_person_now = activity_person_now - 1 WHERE activity_uuid = #{activityUuid} AND activity_person_now > 0")
     void cancelJoinActivity(@Param("activityUuid") String activityUuid);
+
+    // 收藏活动
+    @Update("UPDATE dim_activity SET activity_collect_num = activity_collect_num + 1 WHERE activity_uuid = #{activityUuid}")
+    void collectActivity(@Param("activityUuid") String activityUuid);
+
+    // 取消收藏
+    @Update("UPDATE dim_activity SET activity_collect_num = activity_collect_num - 1 WHERE activity_uuid = #{activityUuid} AND activity_collect_num > 0")
+    void cancelCollectActivity(@Param("activityUuid") String activityUuid);
+
     // 更新活动信息
     @Update("UPDATE dim_activity SET activity_name = #{activityName}, activity_desc_text = #{activityDescText}, " +
             "activity_location = #{activityLocation}, activity_begin_time = #{activityBeginTime}, " +
@@ -50,8 +59,10 @@ public interface ActivityMapper {
     // 查询所有活动
     @Select("SELECT * FROM dim_activity")
     List<ActivityPO> findAll();
+
     @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8)")
     List<ActivityPO> findAllActive();
+
     // 更新评论数量
     @Update("UPDATE dim_activity SET comment_count = #{commentCount} WHERE activity_id = #{activityId}")
     void updateCommentCount(@Param("activityId") Long activityId, @Param("commentCount") Integer commentCount);

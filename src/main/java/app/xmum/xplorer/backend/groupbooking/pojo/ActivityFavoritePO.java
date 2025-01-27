@@ -9,7 +9,7 @@ public class ActivityFavoritePO {
     private String favoriteUuid;    // 收藏记录的UUID
     private String activityUuid;    // 活动UUID，关联活动表
     private String userUuid;        // 用户UUID，关联用户表
-    private Integer favoriteStatus; // 收藏状态：1-已收藏，0-取消收藏
+    private Integer favoriteStatus; // 收藏状态：0-已收藏，1-取消收藏
     private LocalDateTime createdAt; // 创建时间
     private LocalDateTime updatedAt; // 修改时间
 }

@@ -39,6 +39,8 @@ public class ActivityService {
     private VisitLogService visitLogService;
     @Autowired
     private ActivityAttendanceService activityAttendanceService;
+    @Autowired
+    private ActivityFavoriteService activityFavoriteService;
 
     public ApiResponse<ActivityPO> findByAId(ActivityPO activityPO,String  uid) {
         try {
@@ -83,7 +85,8 @@ public class ActivityService {
     }
 
     //参加活动
-    public ApiResponse<?> joinActivity(ActivityPO activityPO, String uid) {
+    public ApiResponse<?> joinActivity(String activityUuid, String uid) {
+        ActivityPO activityPO = activityMapper.findByUid(activityUuid);
         if (activityPO.getActivityPersonNow() > activityPO.getActivityPersonMax()) {
             log.error("活动人数超过最大限制");
             return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动人数已满");
@@ -101,7 +104,8 @@ public class ActivityService {
     }
 
     // 取消参加活动
-    public ApiResponse<?> cancelJoinActivity(ActivityPO activityPO, String uid) {
+    public ApiResponse<?> cancelJoinActivity(String activityUuid, String uid) {
+        ActivityPO activityPO = activityMapper.findByUid(activityUuid);
         if (activityPO.getActivityPersonNow() < 0) {
             log.error("活动人数小于0");
             return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动人数小于0");
@@ -114,6 +118,45 @@ public class ActivityService {
         }
         updateHeatAndStatus(activityPO);
 
+        return ApiResponse.success(null);
+    }
+
+    // 收藏活动
+    @Transactional
+    public ApiResponse<?> favourActivity(String activityUuid, String uid) {
+        ActivityPO activityPO = activityMapper.findByUid(activityUuid);
+        if (activityPO.getActivityCollectNum() < 0) {
+            log.error("活动收藏数小于0");
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动收藏数小于0");
+        }
+        try {
+            activityMapper.collectActivity(activityPO.getActivityUuid());
+            activityFavoriteService.favoriteActivity(uid, activityUuid);
+        } catch (Exception e) {
+            log.error("收藏活动时，收藏数更新失败", e);
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "收藏活动失败："+e.getMessage());
+        }
+        updateHeatAndStatus(activityPO);
+
+        return ApiResponse.success(null);
+    }
+
+    // 取消收藏活动
+    @Transactional
+    public ApiResponse<?> cancelFavourActivity(String activityUuid, String uid) {
+        ActivityPO activityPO = activityMapper.findByUid(activityUuid);
+        if (activityPO.getActivityCollectNum() < 0) {
+            log.error("活动收藏数小于0");
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动收藏数小于0");
+        }
+        try {
+            activityMapper.cancelCollectActivity(activityPO.getActivityUuid());
+            activityFavoriteService.unfavoriteActivity(uid, activityUuid);
+        } catch (Exception e) {
+            log.error("取消收藏活动时，收藏数更新失败", e);
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "取消收藏活动失败："+e.getMessage());
+        }
+        updateHeatAndStatus(activityPO);
         return ApiResponse.success(null);
     }
 
@@ -191,6 +234,7 @@ public class ActivityService {
         }
         return ApiResponse.success(activityPO);
     }
+
 
     public ApiResponse<?> cancelActivity(ActivityPO activityPO, String userUuid) {
         // HACK: 后续可以添加通知给被取消活动的参与用户
@@ -355,37 +399,5 @@ public class ActivityService {
         return activityPOList;
     }
 
-    public ApiResponse<?> paramCheck(ActivityPO activityPO) {
-        if (activityPO.getActivityName() == null || activityPO.getActivityName().isEmpty()) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动名称不能为空");
-        }
-        if (activityPO.getActivityPersonMax() == null || activityPO.getActivityPersonMax() <= 0) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动最大人数必须大于0");
-        }
-        if (activityPO.getActivityPersonMin() == null || activityPO.getActivityPersonMin() <= 0) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动最小人数必须大于0");
-        }
-        if (activityPO.getActivityPersonMax() < activityPO.getActivityPersonMin()) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动最大人数必须大于等于最小人数");
-        }
-        if (activityPO.getActivityBeginTime() == null) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动开始时间不能为空");
-        }
-        if (activityPO.getActivityEndTime() == null) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动结束时间不能为空");
-        }
-        if (activityPO.getActivityRegisterStartTime() == null) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动报名开始时间不能为空");
-        }
-        if (activityPO.getActivityRegisterEndTime() == null) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动报名结束时间不能为空");
-        }
-        if (activityPO.getActivityBeginTime().isAfter(activityPO.getActivityEndTime())) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动开始时间不能晚于结束时间");
-        }
-        if (activityPO.getActivityRegisterStartTime().isAfter(activityPO.getActivityRegisterEndTime())) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动报名开始时间不能晚于结束时间");
-        }
-        return ApiResponse.success(null);
-    }
+
 }

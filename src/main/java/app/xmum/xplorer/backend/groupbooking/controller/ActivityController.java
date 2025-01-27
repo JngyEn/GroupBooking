@@ -3,12 +3,11 @@ package app.xmum.xplorer.backend.groupbooking.controller;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityAttendanceEnum;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
 import app.xmum.xplorer.backend.groupbooking.pojo.ActivityAttendancePO;
+import app.xmum.xplorer.backend.groupbooking.pojo.ActivityFavoritePO;
 import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
-import app.xmum.xplorer.backend.groupbooking.service.ActivityAttendanceService;
-import app.xmum.xplorer.backend.groupbooking.service.ActivityService;
+import app.xmum.xplorer.backend.groupbooking.service.*;
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
-import app.xmum.xplorer.backend.groupbooking.service.UserService;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -26,14 +25,16 @@ public class ActivityController {
     @Autowired
     private UserService userService;
     @Autowired
+    private ActivityFavoriteService favoriteService;
+    @Autowired
     private ActivityAttendanceService activityAttendanceService;
+    @Autowired
+    private ValidationService validationService;
     @PostMapping("/{uid}")
     public ApiResponse<?> findByAId(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
-        if(userService.getUserByUuid(uid).getCode() != 200) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"用户不存在");
-        }
-        if(activityService.findByAid(activityPO.getActivityUuid()).getCode() != 200) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
+        ApiResponse<?> checkResult = validationService.validationCheck(activityPO.getActivityUuid(), uid);
+        if (checkResult.getCode() != 200) {
+            return checkResult;
         }
         return activityService.findByAId(activityPO, uid);
     }
@@ -41,7 +42,7 @@ public class ActivityController {
     @PostMapping
     public ApiResponse<?> insert(@RequestBody ActivityPO activityPO) {
         // 活动开始后人数未满可以继续报名
-        ApiResponse<?> result = activityService.paramCheck(activityPO);
+        ApiResponse<?> result = validationService.activityParamCheck(activityPO);
         if (result.getCode() != 200) {
             return result;
         }
@@ -53,12 +54,9 @@ public class ActivityController {
     // 参加活动
     @PostMapping("/{uid}/join")
     public ApiResponse<?> joinActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
-        ActivityPO activity = activityService.findByAid(activityPO.getActivityUuid()).getData();
-        if (activity == null) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动不存在");
-        }
-        if (userService.getUserByUuid(uid).getCode() != 200) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "用户不存在");
+        ApiResponse<?> checkResult = validationService.validationCheck(activityPO.getActivityUuid(), uid);
+        if (checkResult.getCode() != 200) {
+            return checkResult;
         }
         ActivityAttendancePO attendance = activityAttendanceService.getAttendanceByUserAndActivityUuid(uid, activityPO.getActivityUuid());
         if (attendance != null) {
@@ -68,24 +66,40 @@ public class ActivityController {
                 }
             }
         }
-        return activityService.joinActivity(activity, uid);
+        return activityService.joinActivity(activityPO.getActivityUuid(), uid);
     }
 
     @PostMapping("/{uid}/cancelJoin")
     public ApiResponse<?> cancelJoinActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
-        ActivityPO activity = activityService.findByAid(activityPO.getActivityUuid()).getData();
-        if(activity == null) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
+        ApiResponse<?> checkResult = validationService.validationCheck(activityPO.getActivityUuid(), uid);
+        if (checkResult.getCode() != 200) {
+            return checkResult;
         }
-        if(userService.getUserByUuid(uid).getCode() != 200) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "用户不存在");
-        }
-        return activityService.cancelJoinActivity(activity, uid);
+        return activityService.cancelJoinActivity(activityPO.getActivityUuid(), uid);
     }
 
-    @DeleteMapping("/{id}")
-    public void deleteById(@PathVariable Long id) {
-        activityService.deleteById(id);
+    // 收藏活动
+    @PostMapping("/favorite")
+    public ApiResponse<?> favoriteActivity(@RequestParam String userUuid, @RequestParam String activityUuid) {
+        ApiResponse<?> checkResult = validationService.validationCheck(activityUuid, userUuid);
+        if (checkResult.getCode() != 200) {
+            return checkResult;
+        }
+        ApiResponse<ActivityFavoritePO> result = favoriteService.findFavoriteByUserAndActivity(userUuid, activityUuid);
+        if (result.getCode() == ErrorCode.BAD_REQUEST.getCode()) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动已被收藏");
+        }
+        return activityService.favourActivity(activityUuid, userUuid);
+    }
+
+    // 取消收藏
+    @PostMapping("/unfavorite")
+    public ApiResponse<?> unfavoriteActivity(@RequestParam String userUuid, @RequestParam String activityUuid) {
+        ApiResponse<?> checkResult = validationService.validationCheck(activityUuid, userUuid);
+        if (checkResult.getCode() != 200) {
+            return checkResult;
+        }
+        return activityService.unfavourActivity(activityUuid, userUuid);
     }
 
     @GetMapping

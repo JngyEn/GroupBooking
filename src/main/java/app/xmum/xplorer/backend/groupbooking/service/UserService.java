@@ -42,7 +42,7 @@ public class UserService {
             if (user != null) {
                 return ApiResponse.success(user);
             }
-            return fail(ErrorCode.NOT_FOUND, "User not found");
+            return fail(ErrorCode.NOT_FOUND, "用户不存在");
         } catch (Exception e) {
             return fail(ErrorCode.INTERNAL_ERROR, e.getMessage());
         }

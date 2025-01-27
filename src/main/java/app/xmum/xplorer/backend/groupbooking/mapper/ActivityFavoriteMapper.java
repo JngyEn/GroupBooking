@@ -8,23 +8,22 @@ import java.util.List;
 @Mapper
 public interface ActivityFavoriteMapper {
 
+    // 插入收藏记录
     @Insert("INSERT INTO fact_activity_favorite (favorite_uuid, activity_uuid, user_uuid, favorite_status, created_at, updated_at) " +
             "VALUES (#{favoriteUuid}, #{activityUuid}, #{userUuid}, #{favoriteStatus}, #{createdAt}, #{updatedAt})")
     @Options(useGeneratedKeys = true, keyProperty = "favoriteId")
-    void insert(ActivityFavoritePO favorite);
+    int insertFavorite(ActivityFavoritePO favorite);
 
-    @Select("SELECT * FROM fact_activity_favorite WHERE favorite_id = #{favoriteId}")
-    ActivityFavoritePO findById(Long favoriteId);
-
+    // 根据用户UUID查询收藏记录
     @Select("SELECT * FROM fact_activity_favorite WHERE user_uuid = #{userUuid}")
-    List<ActivityFavoritePO> findByUserUuid(String userUuid);
+    List<ActivityFavoritePO> selectFavoritesByUserUuid(String userUuid);
 
-    @Select("SELECT * FROM fact_activity_favorite WHERE activity_uuid = #{activityUuid}")
-    List<ActivityFavoritePO> findByActivityUuid(String activityUuid);
+    // 根据用户UUID和活动UUID查询收藏记录
+    @Select("SELECT * FROM fact_activity_favorite WHERE user_uuid = #{userUuid} AND activity_uuid = #{activityUuid}")
+    ActivityFavoritePO selectFavoriteByUserAndActivity(String userUuid, String activityUuid);
 
-    @Update("UPDATE fact_activity_favorite SET favorite_status = #{favoriteStatus}, updated_at = #{updatedAt} WHERE favorite_id = #{favoriteId}")
-    void update(ActivityFavoritePO favorite);
-
-    @Delete("DELETE FROM fact_activity_favorite WHERE favorite_id = #{favoriteId}")
-    void delete(Long favoriteId);
+    // 更新收藏状态
+    @Update("UPDATE fact_activity_favorite SET favorite_status = #{favoriteStatus}, updated_at = #{updatedAt} " +
+            "WHERE favorite_uuid = #{favoriteUuid}")
+    int updateFavoriteStatus(ActivityFavoritePO favorite);
 }

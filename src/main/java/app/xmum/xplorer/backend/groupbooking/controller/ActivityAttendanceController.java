@@ -14,9 +14,6 @@ public class ActivityAttendanceController {
 
     @Autowired
     private ActivityAttendanceService attendanceService;
-
-
-
     @GetMapping("/{attendanceUuid}")
     public ActivityAttendancePO getAttendanceByUuid(@PathVariable String attendanceUuid) {
         return attendanceService.getAttendanceByUuid(attendanceUuid);
