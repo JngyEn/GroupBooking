@@ -1,8 +1,11 @@
 package app.xmum.xplorer.backend.groupbooking.controller;
 
+import app.xmum.xplorer.backend.groupbooking.enums.ActivityAttendanceEnum;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
+import app.xmum.xplorer.backend.groupbooking.pojo.ActivityAttendancePO;
 import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
+import app.xmum.xplorer.backend.groupbooking.service.ActivityAttendanceService;
 import app.xmum.xplorer.backend.groupbooking.service.ActivityService;
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
 import app.xmum.xplorer.backend.groupbooking.service.UserService;
@@ -22,7 +25,8 @@ public class ActivityController {
     private ActivityService activityService;
     @Autowired
     private UserService userService;
-
+    @Autowired
+    private ActivityAttendanceService activityAttendanceService;
     @PostMapping("/{uid}")
     public ApiResponse<?> findByAId(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
         if(userService.getUserByUuid(uid).getCode() != 200) {
@@ -37,12 +41,9 @@ public class ActivityController {
     @PostMapping
     public ApiResponse<?> insert(@RequestBody ActivityPO activityPO) {
         // 活动开始后人数未满可以继续报名
-        if(activityPO.getActivityBeginTime().isBefore(LocalDateTime.now()) ||
-            activityPO.getActivityRegisterEndTime().isBefore(LocalDateTime.now()) ||
-            activityPO.getActivityBeginTime().isAfter(activityPO.getActivityEndTime()) ||
-            activityPO.getActivityRegisterStartTime().isAfter(activityPO.getActivityRegisterEndTime()) ||
-            activityPO.getActivityRegisterEndTime().isAfter(activityPO.getActivityEndTime())) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"报名或活动时间设置错误");
+        ApiResponse<?> result = activityService.paramCheck(activityPO);
+        if (result.getCode() != 200) {
+            return result;
         }
         //hack：校验用户和类型的UUID
 
@@ -53,14 +54,23 @@ public class ActivityController {
     @PostMapping("/{uid}/join")
     public ApiResponse<?> joinActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
         ActivityPO activity = activityService.findByAid(activityPO.getActivityUuid()).getData();
-        if(activity == null) {
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
+        if (activity == null) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动不存在");
         }
-        if(userService.getUserByUuid(uid).getCode() != 200) {
+        if (userService.getUserByUuid(uid).getCode() != 200) {
             return ApiResponse.fail(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        ActivityAttendancePO attendance = activityAttendanceService.getAttendanceByUserAndActivityUuid(uid, activityPO.getActivityUuid());
+        if (attendance != null) {
+            {
+                if (attendance.getAttendanceStatus() == ActivityAttendanceEnum.ATTEND) {
+                    return ApiResponse.fail(ErrorCode.BAD_REQUEST, "已经参与过该活动");
+                }
+            }
         }
         return activityService.joinActivity(activity, uid);
     }
+
     @PostMapping("/{uid}/cancelJoin")
     public ApiResponse<?> cancelJoinActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
         ActivityPO activity = activityService.findByAid(activityPO.getActivityUuid()).getData();
@@ -71,10 +81,6 @@ public class ActivityController {
             return ApiResponse.fail(ErrorCode.BAD_REQUEST, "用户不存在");
         }
         return activityService.cancelJoinActivity(activity, uid);
-    }
-    @PutMapping
-    public void update(@RequestBody ActivityPO activityPO) {
-        activityService.update(activityPO);
     }
 
     @DeleteMapping("/{id}")
@@ -89,14 +95,15 @@ public class ActivityController {
 
     @PostMapping("/{uid}/cancelActivity")
     public ApiResponse<?> cancelActivity(@RequestBody ActivityPO activityPO,@PathVariable String uid) {
-        if(activityService.findByAid(activityPO.getActivityUuid()).getCode() == 400) {
+        ActivityPO activity = activityService.findByAid(activityPO.getActivityUuid()).getData();
+        if(activity == null) {
             return ApiResponse.fail(ErrorCode.BAD_REQUEST,"活动不存在");
         }
         if (!Objects.equals(activityPO.getUserUuid(), uid)) {
             return ApiResponse.fail(ErrorCode.BAD_REQUEST,"只能取消自己的活动");
         }
-        if(activityPO.getActivityStatus() == ActivityStatusEnum.CANCELLED){
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动已取消");
+        if(activityPO.getActivityStatus() == ActivityStatusEnum.CANCELLED || activityPO.getActivityStatus() == ActivityStatusEnum.ENDED) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动已取消或已结束");
         }
         return activityService.cancelActivity(activityPO, uid);
     }

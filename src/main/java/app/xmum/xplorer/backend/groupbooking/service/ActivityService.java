@@ -1,6 +1,7 @@
 package app.xmum.xplorer.backend.groupbooking.service;
 
 import app.xmum.xplorer.backend.groupbooking.config.RedisConstant;
+import app.xmum.xplorer.backend.groupbooking.enums.ActivityAttendanceEnum;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
 import app.xmum.xplorer.backend.groupbooking.exception.ActivityException;
 import app.xmum.xplorer.backend.groupbooking.mapper.ActivityMapper;
@@ -36,7 +37,8 @@ public class ActivityService {
     private RedisUtil redisUtil;
     @Autowired
     private VisitLogService visitLogService;
-
+    @Autowired
+    private ActivityAttendanceService activityAttendanceService;
 
     public ApiResponse<ActivityPO> findByAId(ActivityPO activityPO,String  uid) {
         try {
@@ -88,14 +90,16 @@ public class ActivityService {
         }
         try {
             activityMapper.joinActivity(activityPO.getActivityUuid());
+            activityAttendanceService.addAttendance(activityPO.getActivityUuid(), uid);
         } catch (Exception e) {
             log.error("参加活动时，人数更新失败", e);
-            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "参加活动时，活动人数更新失败："+e.getMessage());
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "参加活动失败，请重试："+e.getMessage());
         }
         updateHeatAndStatus(activityPO);
 
         return ApiResponse.success(null);
     }
+
     // 取消参加活动
     public ApiResponse<?> cancelJoinActivity(ActivityPO activityPO, String uid) {
         if (activityPO.getActivityPersonNow() < 0) {
@@ -116,13 +120,56 @@ public class ActivityService {
     public void update(ActivityPO activityPO) {
         activityMapper.update(activityPO);
     }
+
     // 用于主动更新活动状态和热度，有activityAttendanceService 进行状态判断并调用
-    public void updateHeatAndStatus(ActivityPO activity) {
-        ActivityPO activityPO = activityMapper.findByUid(activity.getActivityUuid());
-        updateStatusByTime(activityPO);
-        activityPO.setActivityHeat(heatCalculate(activityPO));
-        activityMapper.update(activityPO);
-        hotActivityService.updateHotActivityByActivityId(activityPO.getActivityUuid(), activityPO.getActivityHeat());
+    public ApiResponse<?> updateHeatAndStatus(ActivityPO activity) {
+        int retryCount = 2;
+        long retryInterval = 100;
+
+        for (int i = 0; i <= retryCount; i++) {
+            if (redisUtil.tryLock(
+                    RedisConstant.ACTIVITY_UPDATE_STATUS_LOCK_KEY + activity.getActivityUuid(),
+                    String.valueOf(Thread.currentThread().getId()),
+                    RedisConstant.ACTIVITY_UPDATE_STATUS_LOCK_TTL,
+                    TimeUnit.MILLISECONDS
+            )) {
+                try {
+                    ActivityPO activityPO = activityMapper.findByUid(activity.getActivityUuid());
+                    updateStatusByTime(activityPO);
+                    activityPO.setActivityHeat(heatCalculate(activityPO));
+                    activityMapper.update(activityPO);
+                    hotActivityService.updateHotActivityByActivityId(activityPO.getActivityUuid(), activityPO.getActivityHeat());
+
+                    return ApiResponse.success(null);
+                } catch (Exception e) {
+                    log.error("更新活动状态和热度失败", e);
+                    // 业务逻辑执行失败，返回失败响应
+                    return ApiResponse.fail(ErrorCode.INTERNAL_ERROR, "活动更新失败，内部错误");
+                } finally {
+                    // 释放锁
+                    redisUtil.unlock(
+                            RedisConstant.ACTIVITY_UPDATE_STATUS_LOCK_KEY + activity.getActivityUuid(),
+                            String.valueOf(Thread.currentThread().getId())
+                    );
+                }
+            } else {
+                // 获取锁失败
+                if (i < retryCount) {
+                    log.warn("活动:{} 更新状态和热度失败，锁被占用，正在重试... (重试次数: {})", activity.getActivityUuid(), i + 1);
+                    try {
+                        Thread.sleep(retryInterval);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.error("重试过程中线程被中断", e);
+                        return ApiResponse.fail(ErrorCode.INTERNAL_ERROR, "活动更新失败，线程被中断");
+                    }
+                } else {
+                    log.warn("活动:{} 更新状态和热度失败，锁被占用，重试次数用尽", activity.getActivityUuid());
+                    return ApiResponse.fail(ErrorCode.INTERNAL_ERROR, "活动更新失败，锁被占用，请稍后重试");
+                }
+            }
+        }
+        return ApiResponse.fail(ErrorCode.INTERNAL_ERROR, "活动更新失败，未知错误");
     }
 
     public void deleteById(Long id) {
@@ -146,8 +193,10 @@ public class ActivityService {
     }
 
     public ApiResponse<?> cancelActivity(ActivityPO activityPO, String userUuid) {
+        // HACK: 后续可以添加通知给被取消活动的参与用户
         activityPO.setActivityStatus(ActivityStatusEnum.CANCELLED);
         activityMapper.update(activityPO);
+        activityAttendanceService.cancelAttendance(activityPO.getActivityUuid(), ActivityAttendanceEnum.CANCEL);
         redisUtil.delete(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityName());
         log.info("用户:{} 取消活动:{}", userUuid, activityPO.getActivityName());
         return ApiResponse.success(null);
@@ -204,7 +253,6 @@ public class ActivityService {
         double timeValue = hour * 10_000_000L + minute * 100_000L + second * 1_000L + millis;
         return timeFunc + userFunc + timeValue*0.000000001;
     }
-
 
     public void updateStatusByTime(ActivityPO activityPO){
         LocalDateTime now = LocalDateTime.now();
@@ -272,6 +320,7 @@ public class ActivityService {
             }
         }
     }
+
     /**
      * 事务 1：更新活动状态、访问量、热度
      * @return 更新后的活动列表
@@ -306,4 +355,37 @@ public class ActivityService {
         return activityPOList;
     }
 
+    public ApiResponse<?> paramCheck(ActivityPO activityPO) {
+        if (activityPO.getActivityName() == null || activityPO.getActivityName().isEmpty()) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动名称不能为空");
+        }
+        if (activityPO.getActivityPersonMax() == null || activityPO.getActivityPersonMax() <= 0) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动最大人数必须大于0");
+        }
+        if (activityPO.getActivityPersonMin() == null || activityPO.getActivityPersonMin() <= 0) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动最小人数必须大于0");
+        }
+        if (activityPO.getActivityPersonMax() < activityPO.getActivityPersonMin()) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动最大人数必须大于等于最小人数");
+        }
+        if (activityPO.getActivityBeginTime() == null) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动开始时间不能为空");
+        }
+        if (activityPO.getActivityEndTime() == null) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动结束时间不能为空");
+        }
+        if (activityPO.getActivityRegisterStartTime() == null) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动报名开始时间不能为空");
+        }
+        if (activityPO.getActivityRegisterEndTime() == null) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动报名结束时间不能为空");
+        }
+        if (activityPO.getActivityBeginTime().isAfter(activityPO.getActivityEndTime())) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动开始时间不能晚于结束时间");
+        }
+        if (activityPO.getActivityRegisterStartTime().isAfter(activityPO.getActivityRegisterEndTime())) {
+            return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动报名开始时间不能晚于结束时间");
+        }
+        return ApiResponse.success(null);
+    }
 }

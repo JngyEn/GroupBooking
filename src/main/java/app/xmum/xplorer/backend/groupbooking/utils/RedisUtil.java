@@ -2,8 +2,10 @@ package app.xmum.xplorer.backend.groupbooking.utils;
 import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -14,9 +16,28 @@ public  class RedisUtil {
     @Resource
     private  StringRedisTemplate stringRedisTemplate;
 
-
     public  void set(String key, String value) {
         stringRedisTemplate.opsForValue().set(key, value);
+    }
+
+    public boolean tryLock(String key, String value, long timeout, TimeUnit timeUnit) {
+        return Boolean.TRUE.equals(
+                stringRedisTemplate.opsForValue().setIfAbsent(key, value, timeout, timeUnit)
+        );
+    }
+
+    public boolean unlock(String key, String value) {
+        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then " +
+                "return redis.call('del', KEYS[1]) " +
+                "else " +
+                "return 0 " +
+                "end";
+        Long result = stringRedisTemplate.execute(
+                new DefaultRedisScript<>(script, Long.class),
+                Collections.singletonList(key),
+                value
+        );
+        return result == 1;
     }
 
     public void set(String key, String value, long timeout, TimeUnit timeUnit) {

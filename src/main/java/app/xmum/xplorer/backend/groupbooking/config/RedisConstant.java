@@ -13,4 +13,8 @@ public class RedisConstant {
     public static final String HOT_ACTIVITY_LIST_KEY = "HotActivityList:";//+versionId
     public static final String HOT_ACTIVITY_LIST_CURRENT_VERSION_KEY = "HotActivityList:CurrentVersion";
     public static final String HOT_ACTIVITY_LIST_VALUE = "HotActivityList:ActivityUuid:";
+
+    // 活动更新分布式锁
+    public static final String ACTIVITY_UPDATE_STATUS_LOCK_KEY = "Activity:UpdateStatus:Lock:";
+    public static final long ACTIVITY_UPDATE_STATUS_LOCK_TTL = 2*60*1000;
 }
