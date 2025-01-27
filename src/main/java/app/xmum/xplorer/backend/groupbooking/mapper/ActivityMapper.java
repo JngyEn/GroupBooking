@@ -70,16 +70,25 @@ public interface ActivityMapper {
     // 按照热度排序查询活动，排除已结束和已取消的活动
     @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_heat DESC")
     List<ActivityPO> findAllOrderByHeat();
-
+    // 热度排序游标分页，热度从高到低
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) AND activity_heat < #{cursor}  ORDER BY activity_heat DESC LIMIT #{size}")
+    List<ActivityPO> findAllOrderByHeatWithLimit(@Param("cursor") Double heat, @Param("size") Integer size);
     // 按照收藏数排序查询活动，排除已结束和已取消的活动
     @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_collect_num DESC")
     List<ActivityPO> findAllOrderByCollect();
-
+    // 收藏数排序游标分页，收藏数从高到低
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) AND activity_collect_num < #{cursor}  ORDER BY activity_collect_num DESC LIMIT #{size}")
+    List<ActivityPO> findAllOrderByCollectWithLimit(@Param("cursor") Integer collect, @Param("size") Integer size);
     // 按照活动开始时间排序查询活动，排除已结束和已取消的活动
-    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_begin_time ASC")
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_begin_time ")
     List<ActivityPO> findAllOrderByBeginTime();
-
+    // 活动开始时间排序游标分页，活动开始时间从早到晚
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) AND activity_begin_time < #{cursor}  ORDER BY activity_begin_time LIMIT #{size}")
+    List<ActivityPO> findAllOrderByBeginTimeWithLimit(@Param("cursor") Long beginTime, @Param("size") Integer size);
     // 按照报名截止时间排序查询活动，排除已结束和已取消的活动
     @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) ORDER BY activity_register_end_time ASC")
     List<ActivityPO> findAllOrderByRegisterEndTime();
+    // 报名截止时间排序游标分页，报名截止时间从早到晚
+    @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) AND activity_register_end_time < #{cursor}  ORDER BY activity_register_end_time LIMIT #{size}")
+    List<ActivityPO> findAllOrderByRegisterEndTimeWithLimit(@Param("cursor") Long registerEndTime, @Param("size") Integer size);
 }

@@ -63,7 +63,7 @@ public class ActivityService {
     }
 
     public ApiResponse<?> insert(ActivityPO activityPO) {
-        if (redisUtil.hasKey(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityName())) {
+        if (redisUtil.hasKey(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityUuid())) {
             return ApiResponse.fail(ErrorCode.BAD_REQUEST, "活动已创建");
         }
         //HACK: 后续插入检查，以及其他数据拼接
@@ -80,7 +80,7 @@ public class ActivityService {
             activityPO.setActivityStatus(ActivityStatusEnum.REGISTERING);
         }
         activityMapper.insert(activityPO);
-        redisUtil.set(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityName(), RedisConstant.ACTIVITY_STATUS_ACTIVATE, RedisConstant.ACTIVITY_CREATED_TTL,TimeUnit.MILLISECONDS);
+        redisUtil.set(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityUuid(), RedisConstant.ACTIVITY_STATUS_ACTIVATE, RedisConstant.ACTIVITY_CREATED_TTL,TimeUnit.MILLISECONDS);
         return ApiResponse.success(activityPO);
     }
 
@@ -235,25 +235,34 @@ public class ActivityService {
         return ApiResponse.success(activityPO);
     }
 
-
     public ApiResponse<?> cancelActivity(ActivityPO activityPO, String userUuid) {
         // HACK: 后续可以添加通知给被取消活动的参与用户
         activityPO.setActivityStatus(ActivityStatusEnum.CANCELLED);
         activityMapper.update(activityPO);
         activityAttendanceService.cancelAttendance(activityPO.getActivityUuid(), ActivityAttendanceEnum.CANCEL);
-        redisUtil.delete(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityName());
-        log.info("用户:{} 取消活动:{}", userUuid, activityPO.getActivityName());
+        redisUtil.delete(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityUuid());
+        log.info("用户:{} 取消活动:{}", userUuid, activityPO.getActivityUuid());
         return ApiResponse.success(null);
     }
 
-    // 按照热度排序查询活动
+    // 按照热度排序查询全部活动
     public List<ActivityPO> getActivitiesOrderByHeat() {
         return activityMapper.findAllOrderByHeat();
     }
 
-    // 按照收藏数排序查询活动
+    // 按照收藏数排序查询全部活动
     public List<ActivityPO> getActivitiesOrderByCollect() {
         return activityMapper.findAllOrderByCollect();
+    }
+    // 游标分页按照收藏数查询全部活动
+    public ApiResponse<List<ActivityPO>> getActivitiesOrderByCollectCursor(Integer cursor, Integer limit) {
+        try {
+            List<ActivityPO> result = activityMapper.findAllOrderByCollectWithLimit(cursor, limit);
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("按照收藏数排序查询全部活动失败", e);
+            return ApiResponse.fail(ErrorCode.INTERNAL_ERROR, "按照收藏数排序查询全部活动失败");
+        }
     }
 
     // 按照活动开始时间排序查询活动
@@ -309,6 +318,7 @@ public class ActivityService {
 
         if (!isBeforeActivityEnd){
             activityPO.setActivityStatus(ActivityStatusEnum.ENDED);
+            redisUtil.delete(RedisConstant.ACTIVITY_CREATE_KEY + activityPO.getActivityUuid());
             log.info("活动:{},于结束时间:{},活动结束",activityPO.getActivityName(),activityPO.getActivityEndTime());
             return;
         }
