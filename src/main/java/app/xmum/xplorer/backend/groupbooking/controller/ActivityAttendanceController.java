@@ -1,6 +1,6 @@
 package app.xmum.xplorer.backend.groupbooking.controller;
 
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityAttendancePO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityAttendancePO;
 import app.xmum.xplorer.backend.groupbooking.service.ActivityAttendanceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

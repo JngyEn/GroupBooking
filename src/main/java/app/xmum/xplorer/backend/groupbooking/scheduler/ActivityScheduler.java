@@ -1,9 +1,8 @@
 package app.xmum.xplorer.backend.groupbooking.scheduler;
 
-import app.xmum.xplorer.backend.groupbooking.config.RedisConstant;
 import app.xmum.xplorer.backend.groupbooking.exception.ActivityException;
 import app.xmum.xplorer.backend.groupbooking.mapper.HotActivityMapper;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.service.ActivityService;
 import app.xmum.xplorer.backend.groupbooking.service.HotActivityService;
 import app.xmum.xplorer.backend.groupbooking.utils.RedisUtil;

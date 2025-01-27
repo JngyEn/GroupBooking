@@ -1,9 +1,10 @@
 package app.xmum.xplorer.backend.groupbooking.mapper;
 
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityPO;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface ActivityMapper {
@@ -91,4 +92,8 @@ public interface ActivityMapper {
     // 报名截止时间排序游标分页，报名截止时间从早到晚
     @Select("SELECT * FROM dim_activity WHERE activity_status NOT IN (7, 8) AND activity_register_end_time < #{cursor}  ORDER BY activity_register_end_time LIMIT #{size}")
     List<ActivityPO> findAllOrderByRegisterEndTimeWithLimit(@Param("cursor") Long registerEndTime, @Param("size") Integer size);
+
+    //多条件查询
+    List<ActivityPO> findActivitiesByCriteria(Map<String, Object> criteria);
+
 }

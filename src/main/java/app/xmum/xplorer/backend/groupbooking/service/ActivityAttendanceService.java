@@ -2,8 +2,7 @@ package app.xmum.xplorer.backend.groupbooking.service;
 
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityAttendanceEnum;
 import app.xmum.xplorer.backend.groupbooking.mapper.ActivityAttendanceMapper;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityAttendancePO;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityAttendancePO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

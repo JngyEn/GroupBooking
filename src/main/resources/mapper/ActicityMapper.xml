@@ -1,0 +1,35 @@
+<mapper namespace="app.xmum.xplorer.backend.groupbooking.mapper.ActivityMapper">
+
+    <select id="findActivitiesByCriteria" resultType="app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO">
+        SELECT *
+        FROM activity
+        <where>
+            <!-- 报名开始时间（查找之后的） -->
+            <if test="registerStartTime != null">
+                AND activity_register_start_time >= #{registerStartTime}
+            </if>
+            <!-- 报名结束时间（查找之前的） -->
+            <if test="registerEndTime != null">
+                AND activity_register_end_time <= #{registerEndTime}
+            </if>
+            <!-- 活动开始时间（查找之后的） -->
+            <if test="activityBeginTime != null">
+                AND activity_begin_time >= #{activityBeginTime}
+            </if>
+            <!-- 活动种类 -->
+            <if test="categoryUuid != null">
+                AND category_uuid = #{categoryUuid}
+            </if>
+            <!-- 活动地点 -->
+            <if test="location != null">
+                AND activity_location = #{location}
+            </if>
+            <!-- 空余人数 -->
+            <if test="vacantSpots != null">
+                AND (activity_person_max - activity_person_now) >= #{vacantSpots}
+            </if>
+        </where>
+        ORDER BY activity_begin_time ASC <!-- 按活动开始时间排序 -->
+    </select>
+
+</mapper>

@@ -1,5 +1,5 @@
 package app.xmum.xplorer.backend.groupbooking.mapper;
-import app.xmum.xplorer.backend.groupbooking.pojo.DimActivityCategoryPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.DimActivityCategoryPO;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

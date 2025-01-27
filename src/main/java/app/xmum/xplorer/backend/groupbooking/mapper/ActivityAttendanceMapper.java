@@ -1,7 +1,7 @@
 package app.xmum.xplorer.backend.groupbooking.mapper;
 
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityAttendanceEnum;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityAttendancePO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityAttendancePO;
 import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDateTime;

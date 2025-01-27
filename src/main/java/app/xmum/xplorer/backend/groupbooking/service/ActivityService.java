@@ -3,14 +3,11 @@ package app.xmum.xplorer.backend.groupbooking.service;
 import app.xmum.xplorer.backend.groupbooking.config.RedisConstant;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityAttendanceEnum;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
-import app.xmum.xplorer.backend.groupbooking.exception.ActivityException;
 import app.xmum.xplorer.backend.groupbooking.mapper.ActivityMapper;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
-import app.xmum.xplorer.backend.groupbooking.pojo.HotActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
 import app.xmum.xplorer.backend.groupbooking.utils.RedisUtil;
-import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,10 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -60,6 +56,11 @@ public class ActivityService {
 
         return ApiResponse.success(activityMapper.findByUid(activityPO.getActivityUuid()));
 
+    }
+
+    // 多条件查询
+    public List<ActivityPO> multiQuery(Map<String, Object> criteria) {
+        return activityMapper.findActivitiesByCriteria(criteria);
     }
 
     public ApiResponse<?> insert(ActivityPO activityPO) {

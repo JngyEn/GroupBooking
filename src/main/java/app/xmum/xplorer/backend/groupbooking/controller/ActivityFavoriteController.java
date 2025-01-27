@@ -1,15 +1,12 @@
 package app.xmum.xplorer.backend.groupbooking.controller;
 
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityFavoritePO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
 import app.xmum.xplorer.backend.groupbooking.service.ActivityFavoriteService;
 import app.xmum.xplorer.backend.groupbooking.service.UserService;
 import app.xmum.xplorer.backend.groupbooking.service.ValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/favorites")

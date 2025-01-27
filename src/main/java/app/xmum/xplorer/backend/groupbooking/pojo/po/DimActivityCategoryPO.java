@@ -1,4 +1,4 @@
-package app.xmum.xplorer.backend.groupbooking.pojo;
+package app.xmum.xplorer.backend.groupbooking.pojo.po;
 import lombok.Data;
 
 import java.time.LocalDateTime;

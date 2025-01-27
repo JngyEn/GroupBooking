@@ -2,18 +2,19 @@ package app.xmum.xplorer.backend.groupbooking.controller;
 
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityAttendanceEnum;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityAttendancePO;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityFavoritePO;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.dto.ActivityQueryDTO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityAttendancePO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityFavoritePO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityPO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
 import app.xmum.xplorer.backend.groupbooking.service.*;
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
-import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @RestController
@@ -37,6 +38,22 @@ public class ActivityController {
             return checkResult;
         }
         return activityService.findByAId(activityPO, uid);
+    }
+
+    // 多条件查询
+    @GetMapping
+    public List<ActivityPO> multiQuery(@ModelAttribute
+    ActivityQueryDTO queryDTO) {
+        // 将 DTO 转换为 Map
+        Map<String, Object> criteria = new HashMap<>();
+        criteria.put("registerStartTime", queryDTO.getRegisterStartTime());
+        criteria.put("registerEndTime", queryDTO.getRegisterEndTime());
+        criteria.put("activityBeginTime", queryDTO.getActivityBeginTime());
+        criteria.put("categoryUuid", queryDTO.getCategoryUuid());
+        criteria.put("location", queryDTO.getLocation());
+        criteria.put("vacantSpots", queryDTO.getVacantSpots());
+        //HACK: 数据校验
+        return activityService.multiQuery(criteria);
     }
 
     @PostMapping
@@ -99,7 +116,7 @@ public class ActivityController {
         if (checkResult.getCode() != 200) {
             return checkResult;
         }
-        return activityService.unfavourActivity(activityUuid, userUuid);
+        return activityService.cancelFavourActivity(activityUuid, userUuid);
     }
 
     @GetMapping
@@ -121,7 +138,6 @@ public class ActivityController {
         }
         return activityService.cancelActivity(activityPO, uid);
     }
-
 
     @GetMapping("/order-by-heat")
     public ApiResponse<List<ActivityPO>> getActivitiesOrderByHeat() {

@@ -2,8 +2,8 @@ package app.xmum.xplorer.backend.groupbooking.service;
 
 import app.xmum.xplorer.backend.groupbooking.config.RedisConstant;
 import app.xmum.xplorer.backend.groupbooking.mapper.HotActivityMapper;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityPO;
-import app.xmum.xplorer.backend.groupbooking.pojo.HotActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.HotActivityPO;
 import app.xmum.xplorer.backend.groupbooking.utils.RedisUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

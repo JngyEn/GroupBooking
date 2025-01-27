@@ -1,4 +1,4 @@
-package app.xmum.xplorer.backend.groupbooking.pojo;
+package app.xmum.xplorer.backend.groupbooking.pojo.po;
 import app.xmum.xplorer.backend.groupbooking.enums.ActivityStatusEnum;
 import lombok.Data;
 

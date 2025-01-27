@@ -1,6 +1,6 @@
 package app.xmum.xplorer.backend.groupbooking.mapper;
 
-import app.xmum.xplorer.backend.groupbooking.pojo.UserVisitLogPO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.UserVisitLogPO;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

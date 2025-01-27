@@ -2,7 +2,7 @@ package app.xmum.xplorer.backend.groupbooking.service;
 
 import app.xmum.xplorer.backend.groupbooking.enums.ErrorCode;
 import app.xmum.xplorer.backend.groupbooking.mapper.ActivityFavoriteMapper;
-import app.xmum.xplorer.backend.groupbooking.pojo.ActivityFavoritePO;
+import app.xmum.xplorer.backend.groupbooking.pojo.po.ActivityFavoritePO;
 import app.xmum.xplorer.backend.groupbooking.response.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
