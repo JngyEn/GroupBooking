@@ -91,6 +91,14 @@
             <artifactId>xxl-job-core</artifactId>
             <version>2.3.0</version> <!-- 使用最新版本 -->
         </dependency>
+
+        <!--AI 接口-->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-google-ai-gemini</artifactId>
+            <version>1.0.0-alpha1</version>
+        </dependency>
+
     </dependencies>
 
     <build>
